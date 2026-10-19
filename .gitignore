@@ -1,0 +1,38 @@
+# ---- Secrets & env ----
+.env
+.env.*
+!.env.example
+
+# ---- Laravel (backend) ----
+backend/vendor/
+backend/node_modules/
+backend/.env
+backend/storage/logs/*
+!backend/storage/logs/.gitignore
+backend/bootstrap/cache/*
+!backend/bootstrap/cache/.gitignore
+backend/public/hot
+backend/public/storage
+backend/public/build
+backend/coverage/
+backend/.phpunit.result.cache
+
+# ---- Flutter (mobile) ----
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/.pub-cache/
+mobile/.pub/
+mobile/ios/Pods/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/**/*.iml
+
+# ---- IDE / OS ----
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
