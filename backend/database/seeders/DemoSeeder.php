@@ -20,8 +20,14 @@ class DemoSeeder extends Seeder
         );
 
         $branches = [
-            ['name' => 'Cabang Jakarta Pusat', 'address' => 'Jl. Contoh No. 1, Jakarta'],
-            ['name' => 'Cabang Bandung', 'address' => 'Jl. Contoh No. 2, Bandung'],
+            [
+                'name' => 'Cabang Jakarta Pusat',
+                'address' => 'Jl. Contoh No. 1, Jakarta',
+            ],
+            [
+                'name' => 'Cabang Bandung',
+                'address' => 'Jl. Contoh No. 2, Bandung',
+            ],
         ];
 
         foreach ($branches as $data) {
@@ -73,6 +79,12 @@ class DemoSeeder extends Seeder
                 'password' => 'password',
             ]
         );
+
+        if (! $host->email_verified_at) {
+            $host->forceFill([
+                'email_verified_at' => now(),
+            ])->save();
+        }
 
         if ($jakarta) {
             BusinessMember::firstOrCreate(
