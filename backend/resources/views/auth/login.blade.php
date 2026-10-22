@@ -25,7 +25,7 @@
                 <label for="email">Email</label>
                 <div class="input-wrap">
                     <input id="email" name="email" type="email" required autofocus autocomplete="username"
-                        placeholder="nama@email.com">
+                        placeholder="Masukkan Email Anda">
                 </div>
             </div>
 
@@ -33,7 +33,7 @@
                 <label for="password">Password</label>
                 <div class="input-wrap">
                     <input id="password" name="password" type="password" class="has-toggle" required
-                        autocomplete="current-password" placeholder="Password Anda">
+                        autocomplete="current-password" placeholder="Masukkan Password Anda">
                     <button type="button" class="toggle-vis" data-toggle-password="password"
                         aria-label="Tampilkan password">
                         <svg class="i" viewBox="0 0 24 24" aria-hidden="true">
