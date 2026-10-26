@@ -20,6 +20,9 @@
         <h1>Masuk Staf</h1>
         <p class="muted">Dashboard antrean <strong>MieTemu</strong></p>
 
+        @if (session('status'))
+            <p class="msg ok">{{ session('status') }}</p>
+        @endif
         <form data-ajax data-action="{{ url('/login') }}">
             <div class="field">
                 <label for="email">Email</label>

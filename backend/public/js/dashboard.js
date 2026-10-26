@@ -13,25 +13,37 @@
         cancelled: 'Dibatalkan',
         no_show: 'Tidak hadir',
     };
+    const TABLE_STATUS = {
+        available: 'Kosong',
+        allocated: 'Dialokasikan',
+        occupied: 'Terisi',
+        needs_cleaning: 'Perlu dibersihkan',
+        inactive: 'Nonaktif',
+    };
     const ROLE = { admin: 'Admin', host: 'Host', kitchen: 'Dapur' };
 
-    // Tombol aksi per status. 'confirm' = tindakan penting, minta konfirmasi dulu.
+    // Tombol aksi per status tiket. 'confirm' = tindakan penting, minta konfirmasi dulu.
     const ACTIONS = {
         waiting: [
             { key: 'call', label: 'Panggil', style: 'primary', done: 'dipanggil' },
             { key: 'cancel', label: 'Batalkan', style: 'danger', done: 'dibatalkan', confirm: (t) => `Batalkan tiket ${t.code} (${t.customer_name})?` },
         ],
         called: [
-            { key: 'seat', label: 'Dudukkan', style: 'primary', done: 'sudah duduk' },
+            { key: 'seat', label: 'Dudukkan', style: 'primary', custom: 'seat' },
             { key: 'no-show', label: 'Tidak hadir', style: 'ghost', done: 'ditandai tidak hadir', confirm: (t) => `Tandai ${t.code} (${t.customer_name}) sebagai tidak hadir?` },
             { key: 'cancel', label: 'Batalkan', style: 'danger', done: 'dibatalkan', confirm: (t) => `Batalkan tiket ${t.code} (${t.customer_name})?` },
         ],
         seated: [
-            { key: 'complete', label: 'Selesai', style: 'primary', done: 'selesai', confirm: (t) => `Tandai kunjungan ${t.code} (${t.customer_name}) selesai?` },
+            { key: 'complete', label: 'Selesai', style: 'primary', done: 'selesai', confirm: (t) => `Tandai kunjungan ${t.code} (${t.customer_name}) selesai? Meja akan ditandai perlu dibersihkan.` },
         ],
     };
 
-    const state = { branches: [], branch: null, status: 'waiting', page: 1, lastPage: 1, tickets: [], summary: {}, sessionDate: null, busy: false };
+    const state = {
+        branches: [], branch: null, view: 'queue',
+        status: 'waiting', page: 1, lastPage: 1, tickets: [], summary: {}, sessionDate: null,
+        tables: [], tableSummary: {}, editingTable: null,
+        busy: false,
+    };
 
     const $ = (id) => document.getElementById(id);
     const fmtTime = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' });
@@ -51,16 +63,14 @@
         return node;
     }
 
+    const button = (label, style, onclick) => el('button', { type: 'button', class: `btn btn-sm btn-${style}`, text: label, onclick });
+
     const store = {
         get(key) { try { return localStorage.getItem(key); } catch { return null; } },
         set(key, value) { try { localStorage.setItem(key, value); } catch { /* abaikan */ } },
     };
 
-    function toast(message, type = '') {
-        const node = el('div', { class: ('toast ' + type).trim(), text: message });
-        $('toasts').append(node);
-        setTimeout(() => node.remove(), 4500);
-    }
+        const toast = (message, type) => window.MieTemu.toast(message, type);
 
     async function api(path, { method = 'GET', body } = {}) {
         const res = await fetch(API + path, {
@@ -97,16 +107,7 @@
         return data;
     }
 
-    function confirmBox(message, okLabel = 'Ya, lanjutkan') {
-        return new Promise((resolve) => {
-            const dlg = $('confirm-dialog');
-            $('confirm-message').textContent = message;
-            $('confirm-ok').textContent = okLabel;
-            dlg.returnValue = '';
-            dlg.addEventListener('close', () => resolve(dlg.returnValue === 'ok'), { once: true });
-            dlg.showModal();
-        });
-    }
+    const confirmBox = (message, okLabel) => window.MieTemu.confirm(message, okLabel);
 
     async function guarded(fn) {
         if (state.busy) return;
@@ -123,8 +124,9 @@
     }
 
     const canManage = () => state.branch?.roles.some((r) => r === 'admin' || r === 'host');
+    const isAdmin = () => Boolean(state.branch?.roles.includes('admin'));
 
-    // ---------- Render ----------
+    // ---------- Antrean: render ----------
     function renderChips() {
         $('chips').replaceChildren(...Object.keys(STATUS).map((key) => el('button', {
             class: 'chip' + (key === state.status ? ' active' : ''),
@@ -152,17 +154,13 @@
             no_show: ['Dipanggil', ticket.called_at],
         }[ticket.status];
         if (extra && extra[1]) parts.push(`${extra[0]} ${fmtTime.format(new Date(extra[1]))}`);
+        if (ticket.status === 'seated' && ticket.table_name) parts.push(`Meja ${ticket.table_name}`);
         if (ticket.source === 'walk_in') parts.push('Walk-in');
         return parts.map((text) => el('span', { text }));
     }
 
     function ticketCard(ticket) {
-        const actions = (ACTIONS[ticket.status] || []).map((action) => el('button', {
-            type: 'button',
-            class: `btn btn-sm btn-${action.style}`,
-            text: action.label,
-            onclick: () => runAction(ticket, action),
-        }));
+        const actions = (ACTIONS[ticket.status] || []).map((action) => button(action.label, action.style, () => runAction(ticket, action)));
 
         return el('article', { class: `ticket st-${ticket.status}` },
             el('div', { class: 'ticket-head' },
@@ -173,7 +171,7 @@
             actions.length ? el('div', { class: 'ticket-actions' }, actions) : null);
     }
 
-    function render() {
+    function renderQueue() {
         renderChips();
 
         $('tickets').replaceChildren(...state.tickets.map(ticketCard));
@@ -187,7 +185,7 @@
         }
     }
 
-    // ---------- Data ----------
+    // ---------- Antrean: data ----------
     async function loadQueue({ append = false, silent = false } = {}) {
         if (!state.branch || !canManage()) return;
 
@@ -205,7 +203,7 @@
             state.summary = res.summary;
             state.sessionDate = res.session_date;
             $('updated-at').textContent = `Diperbarui ${fmtClock.format(new Date())} WIB`;
-            render();
+            renderQueue();
         } catch (err) {
             if (silent) $('updated-at').textContent = 'Gagal memperbarui, mencoba lagi...';
             else toast(err.message, 'err');
@@ -213,6 +211,7 @@
     }
 
     async function runAction(ticket, action) {
+        if (action.custom === 'seat') return openSeatDialog(ticket);
         if (action.confirm && !(await confirmBox(action.confirm(ticket)))) return;
 
         await guarded(async () => {
@@ -222,28 +221,218 @@
         });
     }
 
+    // ---------- Pilih meja saat "Dudukkan" ----------
+    async function openSeatDialog(ticket) {
+        const dlg = $('seat-dialog');
+        $('seat-title').textContent = `Dudukkan ${ticket.code}`;
+        $('seat-sub').textContent = `${ticket.customer_name} · ${ticket.party_size} orang. Pilih meja:`;
+        $('seat-options').replaceChildren();
+        $('seat-empty').hidden = true;
+        dlg.showModal();
+
+        try {
+            const res = await api(`/branches/${state.branch.id}/tables`);
+            const fits = res.data
+                .filter((t) => t.status === 'available' && t.capacity >= ticket.party_size)
+                .sort((a, b) => a.capacity - b.capacity || a.name.localeCompare(b.name, 'id', { numeric: true }));
+
+            if (!fits.length) {
+                $('seat-empty').textContent = `Tidak ada meja kosong untuk ${ticket.party_size} orang saat ini.`;
+                $('seat-empty').hidden = false;
+                return;
+            }
+
+            $('seat-options').replaceChildren(...fits.map((table) => el('button', {
+                type: 'button',
+                class: 'btn btn-ghost table-pick',
+                onclick: () => chooseTable(ticket, table),
+            },
+            el('strong', { text: table.name }),
+            el('span', { text: `${table.capacity} kursi` }))));
+        } catch (err) {
+            $('seat-empty').textContent = err.message;
+            $('seat-empty').hidden = false;
+        }
+    }
+
+    async function chooseTable(ticket, table) {
+        $('seat-dialog').close();
+        await guarded(async () => {
+            await api(`/queue-tickets/${ticket.id}/seat`, { method: 'POST', body: { dining_table_id: table.id } });
+            toast(`${ticket.code} duduk di meja ${table.name}.`, 'ok');
+            await loadQueue();
+        });
+    }
+
+    $('seat-cancel').addEventListener('click', () => $('seat-dialog').close());
+
+    // ---------- Meja ----------
+    function tableCard(table) {
+        const admin = isAdmin();
+        const actions = [];
+
+        if (table.status === 'needs_cleaning') {
+            actions.push(button('Tandai bersih', 'primary', () => cleanTable(table)));
+        }
+        if (admin) {
+            actions.push(button('Ubah', 'ghost', () => openTableDialog(table)));
+            if (table.status === 'inactive') {
+                actions.push(button('Aktifkan', 'ghost', () => toggleTable(table, true)));
+            } else if (table.status !== 'occupied' && table.status !== 'allocated') {
+                actions.push(button('Nonaktifkan', 'danger', () => toggleTable(table, false)));
+            }
+        }
+
+        const current = table.current;
+
+        return el('article', { class: `tcard ts-${table.status}` },
+            el('div', { class: 'ticket-head' },
+                el('span', { class: 'ticket-code', text: table.name }),
+                el('span', { class: `badge ts-${table.status}`, text: TABLE_STATUS[table.status] })),
+            el('div', { class: 'ticket-meta' }, el('span', { text: `${table.capacity} kursi` })),
+            current ? el('div', { class: 'tcard-current' },
+                el('strong', { text: `${current.ticket_code ?? ''} ${current.customer_name}`.trim() }),
+                el('span', { text: `${current.party_size} orang · sejak ${fmtTime.format(new Date(current.seated_at))}` })) : null,
+            actions.length ? el('div', { class: 'ticket-actions' }, actions) : null);
+    }
+
+    function renderTables() {
+        $('tables-title').textContent = `Meja · ${state.branch.name}`;
+        $('btn-add-table').hidden = !isAdmin();
+
+        $('t-summary').replaceChildren(...Object.keys(TABLE_STATUS).map((key) => el('span', { class: `pill ts-${key}` },
+            el('strong', { text: String(state.tableSummary[key] ?? 0) }),
+            ` ${TABLE_STATUS[key]}`)));
+
+        $('tables-grid').replaceChildren(...state.tables.map(tableCard));
+        $('tables-empty').hidden = state.tables.length > 0;
+    }
+
+    async function loadTables({ silent = false } = {}) {
+        if (!state.branch || !canManage()) return;
+
+        const branchId = state.branch.id;
+
+        try {
+            const res = await api(`/branches/${branchId}/tables`);
+            if (branchId !== state.branch.id) return;
+
+            state.tables = res.data;
+            state.tableSummary = res.summary;
+            $('tables-updated').textContent = `Diperbarui ${fmtClock.format(new Date())} WIB`;
+            renderTables();
+        } catch (err) {
+            if (silent) $('tables-updated').textContent = 'Gagal memperbarui, mencoba lagi...';
+            else toast(err.message, 'err');
+        }
+    }
+
+    const cleanTable = (table) => guarded(async () => {
+        await api(`/tables/${table.id}/clean`, { method: 'POST' });
+        toast(`Meja ${table.name} siap dipakai.`, 'ok');
+        await loadTables();
+    });
+
+    async function toggleTable(table, active) {
+        if (!active && !(await confirmBox(`Nonaktifkan meja ${table.name}? Meja tidak akan bisa dipakai sampai diaktifkan lagi.`))) return;
+
+        await guarded(async () => {
+            await api(`/tables/${table.id}`, { method: 'PATCH', body: { is_active: active } });
+            toast(`Meja ${table.name} ${active ? 'diaktifkan' : 'dinonaktifkan'}.`, 'ok');
+            await loadTables();
+        });
+    }
+
+    function openTableDialog(table = null) {
+        state.editingTable = table;
+        $('table-dialog-title').textContent = table ? `Ubah meja ${table.name}` : 'Tambah meja';
+        $('table-name').value = table ? table.name : '';
+        $('table-capacity').value = table ? table.capacity : 4;
+        $('table-error').hidden = true;
+        $('table-dialog').showModal();
+    }
+
+    $('btn-add-table').addEventListener('click', () => openTableDialog());
+    $('table-cancel').addEventListener('click', () => $('table-dialog').close());
+    $('btn-refresh-tables').addEventListener('click', () => loadTables());
+
+    $('table-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const error = $('table-error');
+        const submit = $('table-submit');
+        const name = $('table-name').value.trim();
+        const capacity = parseInt($('table-capacity').value, 10);
+
+        if (!name || !Number.isInteger(capacity) || capacity < 1 || capacity > 50) {
+            error.textContent = 'Isi nama meja dan kapasitas antara 1 dan 50.';
+            error.hidden = false;
+            return;
+        }
+
+        submit.disabled = true;
+        try {
+            if (state.editingTable) {
+                await api(`/tables/${state.editingTable.id}`, { method: 'PATCH', body: { name, capacity } });
+                toast(`Meja ${name} diperbarui.`, 'ok');
+            } else {
+                await api(`/branches/${state.branch.id}/tables`, { method: 'POST', body: { name, capacity } });
+                toast(`Meja ${name} ditambahkan.`, 'ok');
+            }
+            $('table-dialog').close();
+            await loadTables();
+        } catch (err) {
+            error.textContent = err.message;
+            error.hidden = false;
+        } finally {
+            submit.disabled = false;
+        }
+    });
+
+    // ---------- Tab dan cabang ----------
+    function setView(view) {
+        state.view = view;
+        const queue = view === 'queue';
+
+        $('queue-view').hidden = !queue;
+        $('tables-view').hidden = queue;
+        $('tab-queue').classList.toggle('active', queue);
+        $('tab-tables').classList.toggle('active', !queue);
+        $('tab-queue').setAttribute('aria-selected', String(queue));
+        $('tab-tables').setAttribute('aria-selected', String(!queue));
+
+        if (queue) loadQueue();
+        else loadTables();
+    }
+
+    $('tab-queue').addEventListener('click', () => setView('queue'));
+    $('tab-tables').addEventListener('click', () => setView('tables'));
+
     function selectBranch(branch) {
         state.branch = branch;
         state.status = 'waiting';
         state.page = 1;
         state.tickets = [];
         state.summary = {};
+        state.tables = [];
         store.set('mietemu.branch', String(branch.id));
 
         const manage = canManage();
-        $('queue-view').hidden = !manage;
+        $('tabs').hidden = !manage;
+        $('queue-view').hidden = true;
+        $('tables-view').hidden = true;
         $('notice').hidden = manage;
 
         if (!manage) {
             const roles = branch.roles.map((r) => ROLE[r] ?? r).join(', ');
-            $('notice').textContent = `Peran Anda di cabang ini: ${roles}. Antrean hanya dikelola oleh Admin dan Host. Halaman pesanan dapur akan tersedia di tahap berikutnya.`;
+            $('notice').textContent = `Peran Anda di cabang ini: ${roles}. Antrean dan meja hanya dikelola oleh Admin dan Host. Halaman pesanan dapur akan tersedia di tahap berikutnya.`;
             return;
         }
+
         $('page-title').textContent = branch.name;
-        loadQueue();
+        setView(state.view);
     }
 
-    // ---------- Event ----------
+    // ---------- Event antrean ----------
     $('btn-call-next').addEventListener('click', () => guarded(async () => {
         const res = await api(`/branches/${state.branch.id}/queue/call-next`, { method: 'POST' });
         toast(`${res.data.code} (${res.data.customer_name}) dipanggil.`, 'ok');
@@ -290,12 +479,17 @@
         }
     });
 
+    function refreshCurrentView() {
+        if (state.view === 'queue') loadQueue({ silent: true });
+        else loadTables({ silent: true });
+    }
+
     setInterval(() => {
-        if (!document.hidden && !state.busy && !document.querySelector('dialog[open]')) loadQueue({ silent: true });
+        if (!document.hidden && !state.busy && !document.querySelector('dialog[open]')) refreshCurrentView();
     }, POLL_MS);
 
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && !state.busy) loadQueue({ silent: true });
+        if (!document.hidden && !state.busy) refreshCurrentView();
     });
 
     // ---------- Mulai ----------
@@ -328,10 +522,7 @@
         });
 
         const roles = [...new Set(state.branches.flatMap((b) => b.roles))].map((r) => ROLE[r] ?? r).join(', ');
-        const who = $('who');
-        who.textContent = document.body.dataset.user;
-        who.append(el('small', { text: roles }));
-
+               $('who').append(el('small', { text: roles }));
         selectBranch(initial);
     }
 
