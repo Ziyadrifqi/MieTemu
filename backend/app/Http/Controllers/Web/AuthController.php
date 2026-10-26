@@ -58,6 +58,10 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login');
+        $redirect = redirect()->route('login');
+
+        return $request->input('reason') === 'idle'
+            ? $redirect->with('status', 'Anda keluar otomatis karena tidak ada aktivitas.')
+            : $redirect;
     }
 }

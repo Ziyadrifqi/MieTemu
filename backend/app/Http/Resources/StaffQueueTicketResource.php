@@ -17,6 +17,7 @@ class StaffQueueTicketResource extends JsonResource
             'status' => $this->status->value,
             'source' => $this->source->value,
             'customer_name' => $this->user?->name ?? $this->guest_name ?? 'Tamu',
+            'table_name' => $this->relationLoaded('diningSession') ? $this->diningSession?->table?->name : null,
             'called_at' => $this->called_at?->toIso8601String(),
             'seated_at' => $this->seated_at?->toIso8601String(),
             'completed_at' => $this->completed_at?->toIso8601String(),

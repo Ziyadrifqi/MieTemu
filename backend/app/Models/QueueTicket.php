@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\QueueTicketSource;
 use App\Enums\QueueTicketStatus;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -72,5 +73,10 @@ class QueueTicket extends Model
             ->where('status', QueueTicketStatus::Waiting->value)
             ->where('ticket_number', '<', $this->ticket_number)
             ->count();
+    }
+
+    public function diningSession(): HasOne
+    {
+        return $this->hasOne(DiningSession::class);
     }
 }

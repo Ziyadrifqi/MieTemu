@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\Business;
 use App\Models\BusinessHour;
 use App\Models\BusinessMember;
+use App\Models\DiningTable;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -39,6 +40,7 @@ class DemoSeeder extends Seeder
                 ['address' => $data['address']]
             );
 
+            // Jam operasional setiap cabang
             for ($day = 1; $day <= 7; $day++) {
                 BusinessHour::firstOrCreate(
                     [
@@ -50,6 +52,26 @@ class DemoSeeder extends Seeder
                         'close_time' => '21:00:00',
                         'is_closed' => false,
                     ]
+                );
+            }
+
+            // Meja untuk setiap cabang
+            foreach (
+                [
+                    ['T1', 2],
+                    ['T2', 2],
+                    ['T3', 4],
+                    ['T4', 4],
+                    ['T5', 6],
+                    ['T6', 8],
+                ] as [$name, $capacity]
+            ) {
+                DiningTable::firstOrCreate(
+                    [
+                        'branch_id' => $branch->id,
+                        'name' => $name,
+                    ],
+                    ['capacity' => $capacity]
                 );
             }
         }

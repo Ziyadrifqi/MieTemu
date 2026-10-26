@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Api\V1\Staff;
 
 use App\Enums\QueueTicketSource;
 use App\Enums\QueueTicketStatus;
+use App\Exceptions\QueueRuleException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Queue\StoreWalkInTicketRequest;
 use App\Http\Resources\StaffQueueTicketResource;
 use App\Models\Branch;
+use App\Models\DiningTable;
 use App\Models\QueueSession;
 use App\Models\QueueTicket;
+use App\Services\Dining\DiningService;
 use App\Services\Queue\QueueTicketService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,7 +21,10 @@ use Illuminate\Validation\Rule;
 
 class QueueController extends Controller
 {
-    public function __construct(private readonly QueueTicketService $service) {}
+    public function __construct(
+        private readonly QueueTicketService $service,
+        private readonly DiningService $dining,
+    ) {}
 
     /** Daftar antrean hari ini untuk satu cabang. */
     public function index(Request $request, Branch $branch): JsonResponse
@@ -50,7 +56,7 @@ class QueueController extends Controller
 
         $tickets = $session
             ? $session->tickets()
-            ->with('user:id,name')
+            ->with(['user:id,name', 'diningSession.table:id,name'])
             ->when(
                 $validated['status'] ?? null,
                 fn($q, $status) => $q->where('status', $status),
@@ -96,7 +102,19 @@ class QueueController extends Controller
 
     public function seat(Request $request, QueueTicket $ticket): StaffQueueTicketResource
     {
-        return $this->act($request, $ticket, QueueTicketStatus::Seated, 'Pengunjung duduk');
+        $ticket->loadMissing('branch.business');
+        Gate::authorize('manageQueue', $ticket->branch);
+
+        $data = $request->validate([
+            'dining_table_id' => ['required', 'integer'],
+        ]);
+
+        $table = DiningTable::find($data['dining_table_id'])
+            ?? throw new QueueRuleException('Meja tidak ditemukan.', 404);
+
+        $seated = $this->dining->seat($ticket, $table, $request->user());
+
+        return new StaffQueueTicketResource($seated->load('user:id,name', 'diningSession.table:id,name'));
     }
 
     public function noShow(Request $request, QueueTicket $ticket): StaffQueueTicketResource
@@ -111,7 +129,12 @@ class QueueController extends Controller
 
     public function complete(Request $request, QueueTicket $ticket): StaffQueueTicketResource
     {
-        return $this->act($request, $ticket, QueueTicketStatus::Completed, 'Kunjungan selesai');
+        $ticket->loadMissing('branch.business');
+        Gate::authorize('manageQueue', $ticket->branch);
+
+        $completed = $this->dining->complete($ticket, $request->user());
+
+        return new StaffQueueTicketResource($completed->load('user:id,name'));
     }
 
     private function act(Request $request, QueueTicket $ticket, QueueTicketStatus $to, string $note): StaffQueueTicketResource

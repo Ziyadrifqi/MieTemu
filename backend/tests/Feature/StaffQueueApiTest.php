@@ -11,6 +11,7 @@ use App\Models\BusinessHour;
 use App\Models\BusinessMember;
 use App\Models\QueueTicket;
 use App\Models\User;
+use App\Models\DiningTable;
 use App\Services\Queue\QueueTicketService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -176,13 +177,30 @@ class StaffQueueApiTest extends TestCase
     public function test_full_flow_records_history(): void
     {
         $ticket = $this->customerTicket($this->branchA);
+        $table = DiningTable::create(['branch_id' => $this->branchA->id, 'name' => 'T1', 'capacity' => 4]);
         Sanctum::actingAs($this->host);
 
         $this->postJson("/api/v1/staff/queue-tickets/{$ticket->id}/call")->assertOk()->assertJsonPath('data.status', 'called');
-        $this->postJson("/api/v1/staff/queue-tickets/{$ticket->id}/seat")->assertOk()->assertJsonPath('data.status', 'seated');
+        $this->postJson("/api/v1/staff/queue-tickets/{$ticket->id}/seat", ['dining_table_id' => $table->id])
+            ->assertOk()->assertJsonPath('data.status', 'seated');
         $this->postJson("/api/v1/staff/queue-tickets/{$ticket->id}/complete")->assertOk()->assertJsonPath('data.status', 'completed');
 
         $this->assertSame(4, $ticket->statusHistories()->count());
+    }
+
+    public function test_invalid_transitions_are_rejected(): void
+    {
+        $ticket = $this->customerTicket($this->branchA);
+        $table = DiningTable::create(['branch_id' => $this->branchA->id, 'name' => 'T1', 'capacity' => 4]);
+        Sanctum::actingAs($this->host);
+
+        // waiting tidak bisa langsung duduk atau selesai
+        $this->postJson("/api/v1/staff/queue-tickets/{$ticket->id}/seat", ['dining_table_id' => $table->id])->assertStatus(409);
+        $this->postJson("/api/v1/staff/queue-tickets/{$ticket->id}/complete")->assertStatus(409);
+
+        // tiket yang sudah batal tidak bisa dipanggil lagi
+        $this->postJson("/api/v1/staff/queue-tickets/{$ticket->id}/cancel")->assertOk();
+        $this->postJson("/api/v1/staff/queue-tickets/{$ticket->id}/call")->assertStatus(409);
     }
 
     public function test_no_show_requires_called_status(): void
@@ -196,20 +214,6 @@ class StaffQueueApiTest extends TestCase
         $this->postJson("/api/v1/staff/queue-tickets/{$ticket->id}/no-show")
             ->assertOk()
             ->assertJsonPath('data.status', 'no_show');
-    }
-
-    public function test_invalid_transitions_are_rejected(): void
-    {
-        $ticket = $this->customerTicket($this->branchA);
-        Sanctum::actingAs($this->host);
-
-        // waiting tidak bisa langsung duduk atau selesai
-        $this->postJson("/api/v1/staff/queue-tickets/{$ticket->id}/seat")->assertStatus(409);
-        $this->postJson("/api/v1/staff/queue-tickets/{$ticket->id}/complete")->assertStatus(409);
-
-        // tiket yang sudah batal tidak bisa dipanggil lagi
-        $this->postJson("/api/v1/staff/queue-tickets/{$ticket->id}/cancel")->assertOk();
-        $this->postJson("/api/v1/staff/queue-tickets/{$ticket->id}/call")->assertStatus(409);
     }
 
     public function test_status_filter_is_validated(): void
