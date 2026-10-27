@@ -35,8 +35,9 @@ services:
     ports:
       - "${APP_PORT:-8000}:8000"
     volumes:
-      # Source di-mount: ubah kode TIDAK perlu rebuild image
       - ./backend:/var/www/html
+      # vendor ada di volume Docker (bukan folder Windows): jauh lebih cepat dibaca
+      - vendor_data:/var/www/html/vendor
     depends_on:
       db:
         condition: service_healthy
@@ -53,3 +54,4 @@ services:
 
 volumes:
   mysql_data:
+  vendor_data:
