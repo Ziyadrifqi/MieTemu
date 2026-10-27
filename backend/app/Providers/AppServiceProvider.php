@@ -22,10 +22,10 @@ class AppServiceProvider extends ServiceProvider
         );
 
         ResetPassword::toMailUsing(function (object $notifiable, string $token) {
-            $url = url(route('password.reset', [
+            $url = rtrim(config('app.url'), '/') . route('password.reset', [
                 'token' => $token,
                 'email' => $notifiable->getEmailForPasswordReset(),
-            ], false));
+            ], false);
 
             $minutes = config(
                 'auth.passwords.' . config('auth.defaults.passwords') . '.expire'

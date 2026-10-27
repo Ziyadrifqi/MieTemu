@@ -64,6 +64,12 @@
                             node.hidden = true;
                         });
                     }
+                    
+                    // Tautan lanjutan sesuai jenis akun, bila halaman menyediakannya (data-audience).
+                    const audience = data.staff ? 'staff' : 'visitor';
+                    document.querySelectorAll('[data-audience]').forEach((node) => {
+                        node.hidden = node.dataset.audience !== audience;
+                    });
                 } else if (res.status === 422) {
                     show(
                         Object.values(data.errors || {}).flat().join(' ') ||

@@ -60,7 +60,10 @@
             <p class="msg" data-msg role="status"></p>
         </form>
 
-        <p class="footer-note"><a href="{{ route('login') }}">Ke halaman masuk</a></p>
+        {{-- Tampil hanya setelah berhasil, sesuai jenis akun: staf ke dashboard, pengunjung kembali ke aplikasi. --}}
+        <p class="footer-note" data-audience="staff" hidden><a href="{{ route('login') }}">Masuk ke dashboard</a></p>
+        <p class="footer-note" data-audience="visitor" hidden>Silakan kembali ke aplikasi MieTemu, lalu masuk dengan
+            password baru.</p>
     </main>
     <script src="{{ asset('js/auth.js') }}?v={{ filemtime(public_path('js/auth.js')) }}" defer></script>
 </body>

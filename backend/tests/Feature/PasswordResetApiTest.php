@@ -6,8 +6,12 @@ use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use App\Enums\StaffRole;
+use App\Models\Business;
+use App\Models\BusinessMember;
 use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
+
 
 class PasswordResetApiTest extends TestCase
 {
@@ -75,5 +79,50 @@ class PasswordResetApiTest extends TestCase
         $this->get('/reset-password/abc123?email=test@example.com')
             ->assertOk()
             ->assertSee('Reset Password');
+    }
+
+    public function test_reset_link_uses_app_url_not_request_host(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+
+        // Simulasi permintaan dari emulator Android (host 10.0.2.2).
+        $this->withServerVariables(['HTTP_HOST' => '10.0.2.2:8080'])
+            ->postJson('/api/v1/auth/forgot-password', ['email' => $user->email])
+            ->assertOk();
+
+        Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user) {
+            $mail = $notification->toMail($user);
+
+            return str_starts_with($mail->actionUrl, rtrim(config('app.url'), '/') . '/reset-password/');
+        });
+    }
+
+    public function test_reset_response_tells_whether_account_is_staff(): void
+    {
+        $payload = fn(User $user) => [
+            'email' => $user->email,
+            'token' => Password::createToken($user),
+            'password' => 'PasswordBaru123',
+            'password_confirmation' => 'PasswordBaru123',
+        ];
+
+        $visitor = User::factory()->create();
+        $this->postJson('/api/v1/auth/reset-password', $payload($visitor))
+            ->assertOk()
+            ->assertJsonPath('staff', false);
+
+        $business = Business::create(['name' => 'Resto A', 'slug' => 'resto-a', 'status' => 'active']);
+        $staff = User::factory()->create();
+        BusinessMember::create([
+            'business_id' => $business->id,
+            'user_id' => $staff->id,
+            'branch_id' => null,
+            'role' => StaffRole::Admin,
+        ]);
+
+        $this->postJson('/api/v1/auth/reset-password', $payload($staff))
+            ->assertOk()
+            ->assertJsonPath('staff', true);
     }
 }
