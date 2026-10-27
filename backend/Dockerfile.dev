@@ -1,13 +1,27 @@
 FROM php:8.3-cli
 
+# Dependensi sistem + ekstensi PHP yang dibutuhkan Laravel & MySQL
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git unzip curl libzip-dev libonig-dev libxml2-dev \
-    && docker-php-ext-install pdo_mysql mbstring zip bcmath pcntl \
+        git unzip curl libzip-dev libonig-dev libxml2-dev \
+    && docker-php-ext-install pdo_mysql mbstring zip bcmath pcntl opcache \
     && rm -rf /var/lib/apt/lists/*
 
+# Mempercepat server dev: kode PHP di-cache di memori, perubahan file tetap terbaca dalam ~2 detik.
+RUN { \
+      echo 'opcache.enable=1'; \
+      echo 'opcache.memory_consumption=192'; \
+      echo 'opcache.max_accelerated_files=20000'; \
+      echo 'opcache.validate_timestamps=1'; \
+      echo 'opcache.revalidate_freq=2'; \
+      echo 'realpath_cache_size=4096K'; \
+      echo 'realpath_cache_ttl=600'; \
+    } > /usr/local/etc/php/conf.d/zz-dev-performance.ini
+
+# Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Source code tidak di-COPY, tapi di-mount lewat docker-compose.
+# Source code TIDAK di-COPY: di-mount lewat docker-compose (bind mount).
+# Image hanya berisi runtime, jadi hanya rebuild kalau file ini berubah.
 EXPOSE 8000
