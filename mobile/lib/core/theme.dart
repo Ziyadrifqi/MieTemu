@@ -27,12 +27,12 @@ class AppColors {
 
   static List<BoxShadow> softShadow = [
     BoxShadow(
-      color: red.withOpacity(0.28),
+      color: red.withValues(alpha: 0.28),
       blurRadius: 20,
       offset: const Offset(0, 12),
     ),
     BoxShadow(
-      color: red.withOpacity(0.12),
+      color: red.withValues(alpha: 0.12),
       blurRadius: 6,
       offset: const Offset(0, 3),
     ),
@@ -40,7 +40,7 @@ class AppColors {
 
   static List<BoxShadow> cardShadow = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.06),
+      color: Colors.black.withValues(alpha: 0.06),
       blurRadius: 32,
       offset: const Offset(0, 12),
     ),

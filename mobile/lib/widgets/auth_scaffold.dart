@@ -26,109 +26,117 @@ class AuthScaffold extends StatelessWidget {
             decoration: const BoxDecoration(gradient: AppColors.bgGradient),
           ),
 
-          // ===== DEKORASI LINGKARAN BLUR =====
+          // ===== DEKORASI LINGKARAN =====
           Positioned(
             top: -60,
             right: -60,
-            child: _blurCircle(180, AppColors.redLight.withOpacity(0.18)),
+            child: _blurCircle(180, AppColors.redLight.withValues(alpha: 0.18)),
           ),
           Positioned(
             top: 200,
             left: -80,
-            child: _blurCircle(200, AppColors.red.withOpacity(0.10)),
+            child: _blurCircle(200, AppColors.red.withValues(alpha: 0.10)),
           ),
           Positioned(
             bottom: -80,
             right: -60,
-            child: _blurCircle(220, AppColors.redDeep.withOpacity(0.08)),
+            child: _blurCircle(220, AppColors.redDeep.withValues(alpha: 0.08)),
           ),
 
-          // ===== KONTEN =====
+          // ===== KONTEN (dibatasi lebarnya agar rapi di tablet) =====
           SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 12),
+            child: Center(
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 12),
 
-                  // ===== LOGO MIE =====
-                  Center(
-                    child: Container(
-                      width: 88,
-                      height: 88,
-                      decoration: BoxDecoration(
-                        gradient: AppColors.brandGradient,
-                        shape: BoxShape.circle,
-                        boxShadow: AppColors.softShadow,
-                      ),
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        Icons.ramen_dining_rounded,
-                        color: Colors.white,
-                        size: 44,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // ===== TITLE =====
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    subtitle,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      height: 1.5,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // ===== FORM CARD (GLASSMORPHISM HALUS) =====
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(28),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                      child: Container(
-                        padding: const EdgeInsets.all(22),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.85),
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.9),
-                            width: 1.2,
+                      // ===== LOGO MIE =====
+                      Center(
+                        child: Container(
+                          width: 88,
+                          height: 88,
+                          decoration: BoxDecoration(
+                            gradient: AppColors.brandGradient,
+                            shape: BoxShape.circle,
+                            boxShadow: AppColors.softShadow,
                           ),
-                          boxShadow: AppColors.cardShadow,
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.ramen_dining_rounded,
+                            color: Colors.white,
+                            size: 44,
+                          ),
                         ),
-                        child: child,
                       ),
-                    ),
-                  ),
+                      const SizedBox(height: 24),
 
-                  const SizedBox(height: 24),
+                      // ===== TITLE =====
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.ink,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        subtitle,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          height: 1.5,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
 
-                  // ===== FOOTER =====
-                  Text(
-                    '© 2026 Antrean Mie',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.muted.withOpacity(0.7),
-                      letterSpacing: 0.3,
-                    ),
+                      // ===== FORM CARD (GLASSMORPHISM HALUS) =====
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(28),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                          child: Container(
+                            padding: const EdgeInsets.all(22),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(28),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                width: 1.2,
+                              ),
+                              boxShadow: AppColors.cardShadow,
+                            ),
+                            child: child,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // ===== FOOTER =====
+                      Text(
+                        '© ${DateTime.now().year} MieTemu',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.muted.withValues(alpha: 0.7),
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

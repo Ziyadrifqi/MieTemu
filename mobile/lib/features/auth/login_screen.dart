@@ -10,10 +10,16 @@ import '../../widgets/primary_button.dart';
 import 'auth_controller.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, required this.auth, required this.onRegister});
+  const LoginScreen({
+    super.key,
+    required this.auth,
+    required this.onRegister,
+    required this.onForgotPassword,
+  });
 
   final AuthController auth;
   final VoidCallback onRegister;
+  final VoidCallback onForgotPassword;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -95,7 +101,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 color: AppColors.muted,
               ),
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 8),
+
+            // ===== TOMBOL LUPA PASSWORD =====
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _loading ? null : widget.onForgotPassword,
+                child: const Text('Lupa password?'),
+              ),
+            ),
+            const SizedBox(height: 4),
+
+            // ===== TOMBOL MASUK =====
             PrimaryButton(
               label: 'Masuk',
               loading: _loading,

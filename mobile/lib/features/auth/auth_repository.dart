@@ -50,6 +50,10 @@ class AuthRepository {
 
   Future<void> resendCode() => _api.post('/auth/email/resend');
 
+  /// Server selalu menjawab sama, jadi aplikasi tidak bisa (dan tidak perlu) tahu apakah email terdaftar.
+  Future<void> requestPasswordReset(String email) =>
+      _api.post('/auth/forgot-password', body: {'email': email});
+
   /// null = belum login atau token sudah tidak berlaku. Error jaringan dilempar ulang.
   Future<User?> restoreSession() async {
     final token = await _tokens.read();

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
 import 'auth_controller.dart';
+import 'forgot_password_screen.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 
-/// Peralihan Masuk <-> Daftar tanpa menumpuk rute, jadi tidak ada layar tersisa saat login berhasil.
+enum _GuestPage { login, register, forgotPassword }
+
+/// Peralihan Masuk / Daftar / Lupa password tanpa menumpuk rute,
+/// jadi tidak ada layar tersisa saat login berhasil.
 class GuestFlow extends StatefulWidget {
   const GuestFlow({super.key, required this.auth});
 
@@ -15,26 +19,34 @@ class GuestFlow extends StatefulWidget {
 }
 
 class _GuestFlowState extends State<GuestFlow> {
-  bool _showRegister = false;
+  _GuestPage _page = _GuestPage.login;
 
-  void _setRegister(bool value) => setState(() => _showRegister = value);
+  void _go(_GuestPage page) => setState(() => _page = page);
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: !_showRegister, // tombol kembali di layar Daftar = ke layar Masuk
+      canPop:
+          _page ==
+          _GuestPage.login, // tombol kembali di layar lain = ke layar Masuk
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _setRegister(false);
+        if (!didPop) _go(_GuestPage.login);
       },
-      child: _showRegister
-          ? RegisterScreen(
-              auth: widget.auth,
-              onLogin: () => _setRegister(false),
-            )
-          : LoginScreen(
-              auth: widget.auth,
-              onRegister: () => _setRegister(true),
-            ),
+      child: switch (_page) {
+        _GuestPage.login => LoginScreen(
+          auth: widget.auth,
+          onRegister: () => _go(_GuestPage.register),
+          onForgotPassword: () => _go(_GuestPage.forgotPassword),
+        ),
+        _GuestPage.register => RegisterScreen(
+          auth: widget.auth,
+          onLogin: () => _go(_GuestPage.login),
+        ),
+        _GuestPage.forgotPassword => ForgotPasswordScreen(
+          auth: widget.auth,
+          onBack: () => _go(_GuestPage.login),
+        ),
+      },
     );
   }
 }
