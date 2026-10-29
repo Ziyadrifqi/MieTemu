@@ -36,6 +36,10 @@ class BranchPolicy
     {
         $branch->loadMissing('business');
 
+        if ($branch->is_active === false) {
+            return false;
+        }
+
         // Bisnis yang disuspend tidak boleh diakses stafnya.
         if ($branch->business->status !== 'active') {
             return false;

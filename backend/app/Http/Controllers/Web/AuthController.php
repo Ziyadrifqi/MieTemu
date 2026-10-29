@@ -37,9 +37,10 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        // Dashboard hanya untuk staf. Pengunjung biasa dan super admin tanpa
-        // keanggotaan tidak otomatis boleh masuk (PRD bagian 4.5).
-        if (! $request->user()->accessibleBranches()->exists()) {
+        $user = $request->user();
+
+        // Dashboard hanya untuk staf atau Super Admin.
+        if (! $user->isSuperAdmin() && ! $user->accessibleBranches()->exists()) {
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -49,7 +50,7 @@ class AuthController extends Controller
             ]);
         }
 
-        return response()->json(['redirect' => route('dashboard')]);
+        return response()->json(['redirect' => $user->homeUrl()]);
     }
 
     public function logout(Request $request): RedirectResponse

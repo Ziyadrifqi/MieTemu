@@ -58,6 +58,19 @@
 
     window.MieTemu = { confirm: confirmBox, toast };
 
+        // Form dengan data-confirm="pesan" meminta konfirmasi lewat modal sebelum dikirim.
+    document.addEventListener('submit', async (e) => {
+        const form = e.target;
+        const message = form.dataset?.confirm;
+        if (!message || form.dataset.confirmed) return;
+
+        e.preventDefault();
+        if (await confirmBox(message, form.dataset.confirmOk || undefined)) {
+            form.dataset.confirmed = '1';
+            form.submit();
+        }
+    });
+    
     // ---------- Keluar ----------
     const logoutForm = $('logout-form');
     let loggingOut = false;

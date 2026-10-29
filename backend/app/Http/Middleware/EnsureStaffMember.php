@@ -16,7 +16,9 @@ class EnsureStaffMember
         if ($user && $user->accessibleBranches()->exists()) {
             return $next($request);
         }
-
+        if ($user && $user->isSuperAdmin() && ! $request->expectsJson()) {
+            return redirect()->route('super.businesses.index');
+        }
         if ($request->expectsJson()) {
             abort(403, 'Akun Anda tidak memiliki akses staf.');
         }

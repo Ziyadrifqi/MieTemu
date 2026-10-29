@@ -37,6 +37,14 @@ class User extends Authenticatable
         ];
     }
 
+    /** Halaman awal setelah login. */
+    public function homeUrl(): string
+    {
+        return $this->isSuperAdmin() && ! $this->accessibleBranches()->exists()
+            ? route('super.businesses.index')
+            : route('dashboard');
+    }
+
     public function businessMemberships(): HasMany
     {
         return $this->hasMany(BusinessMember::class);
@@ -83,6 +91,7 @@ class User extends Authenticatable
         }
 
         return Branch::query()
+            ->where('is_active', true)
             ->whereHas('business', fn($q) => $q->where('status', 'active'))
             ->where(function (Builder $query) use ($memberships) {
                 foreach ($memberships as $membership) {

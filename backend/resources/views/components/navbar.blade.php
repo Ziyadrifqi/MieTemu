@@ -1,8 +1,13 @@
 @props(['branchSelect' => false])
 
+@php
+    $user = Auth::user();
+    $isStaff = $user->accessibleBranches()->exists();
+@endphp
+
 <header class="topbar">
     <div class="topbar-inner">
-        <a class="brand" href="{{ route('dashboard') }}">
+        <a class="brand" href="{{ $user->homeUrl() }}">
             <span class="brand-mark">
                 <svg class="i" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M3 11h18a9 9 0 0 1-18 0z" />
@@ -12,8 +17,23 @@
             {{ config('app.name') }}
         </a>
 
+        <nav class="topnav" aria-label="Menu utama">
+            @if ($isStaff)
+                <a href="{{ route('dashboard') }}" @class(['active' => request()->routeIs('dashboard')])>
+                    Antrean
+                </a>
+            @endif
+
+            @if ($user->isSuperAdmin())
+                <a href="{{ route('super.businesses.index') }}" @class(['active' => request()->routeIs('super.*')])>
+                    Restoran
+                </a>
+            @endif
+        </nav>
+
         <div class="topbar-actions">
-            <span class="who" id="who">{{ Auth::user()->name }}</span>
+            <span class="who" id="who">{{ $user->name }}</span>
+
             <form method="POST" action="{{ route('logout') }}" id="logout-form">
                 @csrf
                 <input type="hidden" name="reason" id="logout-reason" value="">

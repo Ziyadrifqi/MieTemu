@@ -25,6 +25,7 @@
     <div class="toasts" id="toasts" aria-live="polite"></div>
 
     <script src="@assetv('js/layout.js')" defer></script>
+    <x-ui.flash />
     @stack('scripts')
 </body>
 
